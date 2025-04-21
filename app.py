@@ -55,7 +55,7 @@ if 'y_binary' not in st.session_state:
 
 # Create sidebar with sliders for parameters A and B
 st.sidebar.header("Model Parameters")
-param_a = st.sidebar.slider("Parameter A (Intercept)", min_value=-10.0, max_value=10.0, value=0.0, step=0.1)
+param_a = st.sidebar.slider("Parameter A (Intercept)", min_value=-10.0, max_value=10.0, value=0.9, step=0.1)
 param_b = st.sidebar.slider("Parameter B (Slope)", min_value=-10.0, max_value=10.0, value=1.0, step=0.1)
 
 # Add dataset controls
@@ -69,7 +69,7 @@ if reset_data or 'last_noise_level' not in st.session_state or 'last_outlier_per
    st.session_state.last_noise_level != noise_level or st.session_state.last_outlier_percent != outlier_percent:
     
     # Generate fixed dataset with controlled noise
-    np.random.seed(42)
+    #np.random.seed(42)
     num_points = 30
     
     # Create x points uniformly distributed
@@ -120,6 +120,8 @@ show_ce_plot_b = st.sidebar.checkbox("Show Cross-Entropy Loss Plot for B", value
 show_ce_plot = st.sidebar.checkbox("Show Cross-Entropy Loss 2D Plot", value=False)
 show_confusion_matrix = st.sidebar.checkbox("Show Confusion Matrix", value=False)
 show_density_plot = st.sidebar.checkbox("Show Density Plot", value=False)
+show_threshold_slider = st.sidebar.checkbox("Show Decision Threshold Slider", value=False)
+show_roc_auc = st.sidebar.checkbox("Show ROC AUC Curve", value=False)
 
 
 # Use fixed points from session state
@@ -168,6 +170,35 @@ if show_cross_entropy:
     $$
     """)
 
+# Add decision threshold slider if enabled
+threshold = 0.5  # Default threshold
+if show_threshold_slider:
+    st.subheader("Decision Threshold Adjustment")
+    threshold = st.slider(
+        "Set decision threshold (probability cutoff for class 1):",
+        min_value=0.00, 
+        max_value=1.0, 
+        value=0.5, 
+        step=0.01,
+        help="Adjust the probability threshold for classifying a point as class 1"
+    )
+    
+    # Recalculate predictions with the new threshold
+    predicted_classes = (current_probs > threshold).astype(int)
+    
+    # Recalculate metrics
+    accuracy = np.mean(predicted_classes == y_binary) * 100
+    misclassification_rate = 100 - accuracy
+    
+    # Show the threshold effect
+    # st.markdown(f"""
+    # #### Impact of Threshold Change
+    # - Default threshold: 0.5
+    # - Current threshold: {threshold:.2f}
+    # - Accuracy: {accuracy:.1f}%
+    # - Misclassification rate: {misclassification_rate:.1f}%
+    # """)
+
 
 # Set common font size for plots
 rcParams['font.size'] = 12
@@ -185,6 +216,8 @@ if show_ce_plot_b:
 if show_confusion_matrix:
     active_plot_count += 1
 if show_density_plot:
+    active_plot_count += 1
+if show_roc_auc:
     active_plot_count += 1
 
 # If we have multiple plots to show
@@ -208,7 +241,14 @@ if active_plot_count > 0:
             
             # Plot the sigmoid curve
             ax_sigmoid.plot(x, sigmoid, 'b-', linewidth=2, label='Sigmoid Function')
-            ax_sigmoid.axhline(y=0.5, color='r', linestyle='--', alpha=0.3, label='Decision Boundary (0.5)')
+            
+            # Plot the decision boundary - either default or custom
+            if show_threshold_slider and threshold != 0.5:
+                ax_sigmoid.axhline(y=0.5, color='r', linestyle=':', alpha=0.2, label='Default Boundary (0.5)')
+                ax_sigmoid.axhline(y=threshold, color='orange', linestyle='--', alpha=0.8, 
+                                 label=f'Custom Boundary ({threshold:.2f})')
+            else:
+                ax_sigmoid.axhline(y=0.5, color='r', linestyle='--', alpha=0.3, label='Decision Boundary (0.5)')
             
             # Plot the points
             colors = ['darkred' if cls == 0 else 'darkgreen' for cls in y_binary]
@@ -235,6 +275,8 @@ if active_plot_count > 0:
             # Add accuracy info to the plot
             info_text = f'Accuracy: {accuracy:.1f}%\nMisclass.: {misclassification_rate:.1f}%'
             info_text += f'\nCE Loss: {cross_entropy:.4f}'
+            if show_threshold_slider and threshold != 0.5:
+                info_text += f'\nThreshold: {threshold:.2f}'
             
             ax_sigmoid.text(0.02, 0.35, info_text, transform=ax_sigmoid.transAxes, fontsize=8, 
                     bbox=dict(facecolor='white', alpha=0.7))
@@ -483,47 +525,36 @@ if active_plot_count > 0:
             class_0_x = x_points[y_binary == 0]
             class_1_x = x_points[y_binary == 1]
             
-            # Calculate decision boundary position (where sigmoid = 0.5)
-            # From sigmoid(ax + b) = 0.5, we get ax + b = 0, so x = -b/a
+            # Calculate decision boundary position based on threshold
+            # From sigmoid(ax + b) = threshold, we get ax + b = log(threshold/(1-threshold)), so x = (log(threshold/(1-threshold)) - b)/a
             if param_a != 0:
-                decision_boundary = -param_b / param_a
+                if show_threshold_slider and threshold != 0.5:
+                    # Calculate the x-value where sigmoid = threshold
+                    threshold_boundary = (np.log(threshold/(1-threshold)) - param_b) / param_a
+                    # Also show the default boundary for comparison
+                    default_boundary = -param_b / param_a
+                else:
+                    threshold_boundary = -param_b / param_a
+                    default_boundary = threshold_boundary
             else:
-                decision_boundary = 0  # Default if param_a is 0
+                threshold_boundary = 0  # Default if param_a is 0
+                default_boundary = 0
             
-            # # Create kernel density estimate for both classes
-            # if len(class_0_x) > 1:  # Need at least 2 points for KDE
-            #     from scipy.stats import gaussian_kde
-            #     class_0_density = gaussian_kde(class_0_x)
-            #     x_0 = np.linspace(min(x_points) - 1, max(x_points) + 1, 1000)
-            #     y_0 = class_0_density(x_0)
-            #     ax_density.plot(x_0, y_0, 'r-', linewidth=2, label='Class 0')
-            #     ax_density.fill_between(x_0, y_0, alpha=0.2, color='red')
-            # else:
-            #     # Just plot points if not enough for KDE
-            #     ax_density.scatter(class_0_x, np.zeros_like(class_0_x), color='red', s=100, marker='o', label='Class 0')
-            #ax_density.scatter(class_0_x, np.zeros_like(class_0_x), color='red', s=100, marker='o', label='Class 0')
-            
-            # if len(class_1_x) > 1:  # Need at least 2 points for KDE
-            #     from scipy.stats import gaussian_kde
-            #     class_1_density = gaussian_kde(class_1_x)
-            #     x_1 = np.linspace(min(x_points) - 1, max(x_points) + 1, 1000)
-            #     y_1 = class_1_density(x_1)
-            #     ax_density.plot(x_1, y_1, 'g-', linewidth=2, label='Class 1')
-            #     ax_density.fill_between(x_1, y_1, alpha=0.2, color='green')
-            # else:
-            #     # Just plot points if not enough for KDE
-            #     ax_density.scatter(class_1_x, np.zeros_like(class_1_x), color='green', s=100, marker='o', label='Class 1')
-            #ax_density.scatter(class_1_x, np.zeros_like(class_1_x), color='green', s=100, marker='o', label='Class 1')
-            
-            # Add decision boundary line
-            ax_density.axvline(x=decision_boundary, color='blue', linestyle='--', linewidth=2, 
-                              label=f'Decision Boundary ({decision_boundary:.2f})')
+            # Add decision boundary lines
+            if show_threshold_slider and threshold != 0.5:
+                ax_density.axvline(x=default_boundary, color='red', linestyle=':', alpha=0.3, 
+                                  label=f'Default Boundary (0.5): x={default_boundary:.2f}')
+                ax_density.axvline(x=threshold_boundary, color='orange', linestyle='--', linewidth=2, 
+                                  label=f'Custom Boundary ({threshold:.2f}): x={threshold_boundary:.2f}')
+            else:
+                ax_density.axvline(x=threshold_boundary, color='blue', linestyle='--', linewidth=2, 
+                                  label=f'Decision Boundary: x={threshold_boundary:.2f}')
             
             # Calculate metrics for each side of boundary
-            correct_left = np.sum((x_points < decision_boundary) & (y_binary == 0))
-            wrong_left = np.sum((x_points < decision_boundary) & (y_binary == 1))
-            correct_right = np.sum((x_points >= decision_boundary) & (y_binary == 1))
-            wrong_right = np.sum((x_points >= decision_boundary) & (y_binary == 0))
+            correct_left = np.sum((x_points < threshold_boundary) & (y_binary == 0))
+            wrong_left = np.sum((x_points < threshold_boundary) & (y_binary == 1))
+            correct_right = np.sum((x_points >= threshold_boundary) & (y_binary == 1))
+            wrong_right = np.sum((x_points >= threshold_boundary) & (y_binary == 0))
             
             # Add point scatter on x-axis
             ax_density.scatter(class_0_x, np.zeros_like(class_0_x) - 0.02, color='darkred',
@@ -547,12 +578,95 @@ if active_plot_count > 0:
             # Add information about classification on either side of boundary
             info_text = f'Left of boundary: {correct_left} correct, {wrong_left} wrong\n'
             info_text += f'Right of boundary: {correct_right} correct, {wrong_right} wrong'
+            if show_threshold_slider and threshold != 0.5:
+                info_text += f'\nThreshold: {threshold:.2f}'
             
             ax_density.text(0.02, 0.02, info_text, transform=ax_density.transAxes, fontsize=8,
                           bbox=dict(facecolor='white', alpha=0.7))
             
             # Display the plot
             st.pyplot(fig_density)
+            current_col += 1
+            
+    # Add the ROC AUC curve plot if enabled
+    if show_roc_auc:
+        with cols[current_col]:
+            fig_roc, ax_roc = plt.subplots(figsize=(fig_width, fig_height))
+            
+            # Create an array of thresholds from 0 to 1 to compute ROC curve
+            thresholds = np.linspace(0, 1, 100)
+            tpr_values = []  # True Positive Rate (Sensitivity)
+            fpr_values = []  # False Positive Rate (1 - Specificity)
+            
+            # Calculate TPR and FPR for each threshold
+            for t in thresholds:
+                # Calculate predicted classes for this threshold
+                pred_t = (current_probs > t).astype(int)
+                
+                # Calculate TP, FP, TN, FN
+                tp_t = np.sum((pred_t == 1) & (y_binary == 1))
+                fp_t = np.sum((pred_t == 1) & (y_binary == 0))
+                tn_t = np.sum((pred_t == 0) & (y_binary == 0))
+                fn_t = np.sum((pred_t == 0) & (y_binary == 1))
+                
+                # Calculate TPR and FPR
+                tpr_t = tp_t / (tp_t + fn_t) if (tp_t + fn_t) > 0 else 0  # Sensitivity
+                fpr_t = fp_t / (fp_t + tn_t) if (fp_t + tn_t) > 0 else 0  # 1-Specificity
+                
+                # Add to the lists
+                tpr_values.append(tpr_t)
+                fpr_values.append(fpr_t)
+            
+            # Calculate current threshold position - flip the list to match threshold order
+            tpr_values = np.array(tpr_values)
+            fpr_values = np.array(fpr_values)
+            
+            # Calculate AUC using trapezoidal rule
+            auc = np.trapz(y=tpr_values, x=fpr_values)
+            
+            # Plot the ROC curve
+            ax_roc.plot(fpr_values, tpr_values, 'b-', linewidth=2, label=f'ROC Curve (AUC = {auc:.3f})')
+            
+            # Add diagonal line for reference (random classifier)
+            ax_roc.plot([0, 1], [0, 1], 'k--', linewidth=1, alpha=0.5, label='Random Classifier')
+            
+            # Find the index of the current threshold and mark it on the curve
+            current_threshold_idx = np.abs(thresholds - threshold).argmin()
+            current_tpr = tpr_values[current_threshold_idx]
+            current_fpr = fpr_values[current_threshold_idx]
+            
+            # Plot vertical and horizontal lines from the current threshold point
+            ax_roc.axvline(x=current_fpr, linestyle='--', color='orange', alpha=0.5)
+            ax_roc.axhline(y=current_tpr, linestyle='--', color='orange', alpha=0.5)
+            
+            # Plot the point for the current threshold
+            ax_roc.scatter([current_fpr], [current_tpr], color='red', s=80, zorder=5, 
+                         label=f'Threshold = {threshold:.2f}')
+            
+            # Add informative text about the current point
+            info_text = f'Threshold: {threshold:.2f}\n'
+            info_text += f'TPR: {current_tpr:.3f}\n'
+            info_text += f'FPR: {current_fpr:.3f}\n'
+            info_text += f'AUC: {auc:.3f}'
+            
+            ax_roc.text(0.98, 0.02, info_text, transform=ax_roc.transAxes, fontsize=8,
+                      ha='right', va='bottom', bbox=dict(facecolor='white', alpha=0.7))
+            
+            # Format the plot
+            ax_roc.set_xlim(-0.02, 1.02)
+            ax_roc.set_ylim(-0.02, 1.02)
+            ax_roc.set_xlabel('False Positive Rate (1-Specificity)', fontsize=10)
+            ax_roc.set_ylabel('True Positive Rate (Sensitivity)', fontsize=10)
+            ax_roc.grid(True, alpha=0.3)
+            
+            # Add legend with smaller font size if we have 3 plots
+            if active_plot_count >= 3:
+                ax_roc.legend(fontsize=6, bbox_to_anchor=(1.05, 1), loc='upper left')
+            else:
+                ax_roc.legend(fontsize=8, bbox_to_anchor=(1.05, 1), loc='upper left')
+            
+            # Display the plot
+            st.pyplot(fig_roc)
             current_col += 1
 # else:
 #     # Single plot display (original behavior)
