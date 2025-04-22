@@ -114,12 +114,12 @@ if reset_data or 'last_noise_level' not in st.session_state or 'last_outlier_per
 # Add checkbox for cross-entropy display
 st.sidebar.header("Options")
 show_main_plot = st.sidebar.checkbox("Show Main Sigmoid Plot", value=False)
+show_density_plot = st.sidebar.checkbox("Show simple Plot", value=False)
 show_cross_entropy = st.sidebar.checkbox("Show Cross-Entropy Loss", value=False)
 show_ce_plot_a = st.sidebar.checkbox("Show Cross-Entropy Loss Plot for A", value=False)
 show_ce_plot_b = st.sidebar.checkbox("Show Cross-Entropy Loss Plot for B", value=False)
 show_ce_plot = st.sidebar.checkbox("Show Cross-Entropy Loss 2D Plot", value=False)
 show_confusion_matrix = st.sidebar.checkbox("Show Confusion Matrix", value=False)
-show_density_plot = st.sidebar.checkbox("Show Density Plot", value=False)
 show_threshold_slider = st.sidebar.checkbox("Show Decision Threshold Slider", value=False)
 show_roc_auc = st.sidebar.checkbox("Show ROC AUC Curve", value=False)
 
