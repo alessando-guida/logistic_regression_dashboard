@@ -131,7 +131,7 @@ y_probs = st.session_state.y_probs    # Original probabilities for reference
 
 # Generate current model predictions
 x = np.linspace(-10, 10, 1000)
-sigmoid = 1 / (1 + np.exp(-(param_a * x + param_b)))
+sigmoid = 1 / (1 + np.exp(-(param_b * x + param_a)))
 
 # Get current model probabilities for our fixed points
 current_probs = 1 / (1 + np.exp(-(param_a * x_points + param_b)))
