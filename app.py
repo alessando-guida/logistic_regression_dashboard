@@ -134,7 +134,7 @@ x = np.linspace(-10, 10, 1000)
 sigmoid = 1 / (1 + np.exp(-(param_b * x + param_a)))
 
 # Get current model probabilities for our fixed points
-current_probs = 1 / (1 + np.exp(-(param_a * x_points + param_b)))
+current_probs = 1 / (1 + np.exp(-(param_b * x_points + param_a)))
 # Clip probabilities to avoid log(0) issues in cross-entropy calculation
 current_probs_clipped = np.clip(current_probs, 1e-10, 1 - 1e-10)
 predicted_classes = (current_probs > 0.5).astype(int)
