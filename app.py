@@ -303,7 +303,8 @@ if active_plot_count > 0:
                 for j in range(len(b_values)):
                     a_val = a_values[i]
                     b_val = b_values[j]
-                    probs = 1 / (1 + np.exp(-(a_val * x_points + b_val)))
+                    # Fix: Use b_val as slope and a_val as intercept to match main formula
+                    probs = 1 / (1 + np.exp(-(b_val * x_points + a_val)))
                     probs_clipped = np.clip(probs, 1e-10, 1 - 1e-10)
                     loss_grid[j, i] = binary_cross_entropy(y_binary, probs_clipped)
             
@@ -350,7 +351,8 @@ if active_plot_count > 0:
             
             # Calculate loss for each A value with the current B
             for a_val in a_values:
-                probs = 1 / (1 + np.exp(-(a_val * x_points + param_b)))
+                # Fix: Keep param_b as slope, vary a_val as intercept to match main formula
+                probs = 1 / (1 + np.exp(-(param_b * x_points + a_val)))
                 probs_clipped = np.clip(probs, 1e-10, 1 - 1e-10)
                 loss_values.append(binary_cross_entropy(y_binary, probs_clipped))
             
@@ -407,7 +409,8 @@ if active_plot_count > 0:
             
             # Calculate loss for each B value with the current A
             for b_val in b_values:
-                probs = 1 / (1 + np.exp(-(param_a * x_points + b_val)))
+                # Fix: Use b_val as slope and param_a as intercept to match main formula
+                probs = 1 / (1 + np.exp(-(b_val * x_points + param_a)))
                 probs_clipped = np.clip(probs, 1e-10, 1 - 1e-10)
                 loss_values.append(binary_cross_entropy(y_binary, probs_clipped))
             
@@ -795,7 +798,7 @@ if show_ce_plot_a:
     
     # Calculate loss for each A value with the current B
     for a_val in a_values:
-        probs = 1 / (1 + np.exp(-(a_val * x_points + param_b)))
+        probs = 1 / (1 + np.exp(-(param_b * x_points + a_val)))
         probs_clipped = np.clip(probs, 1e-10, 1 - 1e-10)
         loss_values.append(binary_cross_entropy(y_binary, probs_clipped))
     
@@ -866,7 +869,7 @@ if show_ce_plot_b:
     
     # Calculate loss for each B value with the current A
     for b_val in b_values:
-        probs = 1 / (1 + np.exp(-(param_a * x_points + b_val)))
+        probs = 1 / (1 + np.exp(-(b_val * x_points + param_a)))
         probs_clipped = np.clip(probs, 1e-10, 1 - 1e-10)
         loss_values.append(binary_cross_entropy(y_binary, probs_clipped))
     
