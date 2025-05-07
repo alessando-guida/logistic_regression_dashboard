@@ -528,21 +528,20 @@ if active_plot_count > 0:
             class_0_x = x_points[y_binary == 0]
             class_1_x = x_points[y_binary == 1]
             
-            # Calculate decision boundary position based on threshold
-            # From sigmoid(ax + b) = threshold, we get ax + b = log(threshold/(1-threshold)), so x = (log(threshold/(1-threshold)) - b)/a
-            if param_a != 0:
+            # Correct the calculation of decision boundary
+            if param_b != 0:  # Avoid division by zero
                 if show_threshold_slider and threshold != 0.5:
                     # Calculate the x-value where sigmoid = threshold
-                    threshold_boundary = (np.log(threshold/(1-threshold)) - param_b) / param_a
+                    threshold_boundary = (np.log(threshold / (1 - threshold)) - param_a) / param_b
                     # Also show the default boundary for comparison
-                    default_boundary = -param_b / param_a
+                    default_boundary = -param_a / param_b
                 else:
-                    threshold_boundary = -param_b / param_a
+                    threshold_boundary = -param_a / param_b
                     default_boundary = threshold_boundary
             else:
-                threshold_boundary = 0  # Default if param_a is 0
-                default_boundary = 0
-            
+                threshold_boundary = float('inf')  # No valid boundary if slope is zero
+                default_boundary = float('inf')
+
             # Add decision boundary lines
             if show_threshold_slider and threshold != 0.5:
                 ax_density.axvline(x=default_boundary, color='red', linestyle=':', alpha=0.3, 
