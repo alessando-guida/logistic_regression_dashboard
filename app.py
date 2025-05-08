@@ -244,11 +244,15 @@ if active_plot_count > 0:
             
             # Plot the decision boundary - either default or custom
             if show_threshold_slider and threshold != 0.5:
-                ax_sigmoid.axhline(y=0.5, color='r', linestyle=':', alpha=0.2, label='Default Boundary (0.5)')
-                ax_sigmoid.axhline(y=threshold, color='orange', linestyle='--', alpha=0.8, 
+                ax_sigmoid.axhline(y=0.5, color='purple', linestyle=':', alpha=0.2, label='Default Boundary (0.5)')
+                ax_sigmoid.axhline(y=threshold, color='purple', linestyle='--', alpha=0.8, 
                                  label=f'Custom Boundary ({threshold:.2f})')
+                # Add a dashed yellow line for the custom boundary on the X axis
+                threshold_x = (np.log(threshold / (1 - threshold)) - param_a) / param_b
+                ax_sigmoid.axvline(x=threshold_x, color='orange', linestyle='--', alpha=0.8, 
+                                 label=f'Custom X Boundary ({threshold_x:.2f})')
             else:
-                ax_sigmoid.axhline(y=0.5, color='r', linestyle='--', alpha=0.3, label='Decision Boundary (0.5)')
+                ax_sigmoid.axhline(y=0.5, color='purple', linestyle='--', alpha=0.3, label='Decision Boundary (0.5)')
             
             # Plot the points
             colors = ['darkred' if cls == 0 else 'darkgreen' for cls in y_binary]
